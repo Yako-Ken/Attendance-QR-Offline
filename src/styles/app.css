@@ -1,0 +1,449 @@
+/* =========================================================================
+   App shell — top bar (mobile) / left rail (desktop), mode switch, action bar
+   ========================================================================= */
+
+.aq-app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+}
+
+/* ---- Top bar (mobile + tablet) ---------------------------------------- */
+
+.aq-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: var(--header-h);
+  padding: var(--s-2) max(var(--s-4), var(--safe-l)) var(--s-2) max(var(--s-4), var(--safe-l));
+  padding-top: calc(var(--s-2) + var(--safe-t));
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.aq-topbar__ctx {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 1 auto;
+}
+
+.aq-topbar__title {
+  font-size: var(--text-md);
+  font-weight: 640;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aq-topbar__sub {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Brand -------------------------------------------------------------- */
+
+.aq-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.aq-brand__mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--canvas);
+  flex: none;
+}
+
+.aq-brand__name {
+  font-size: var(--text-md);
+  font-weight: 680;
+  letter-spacing: var(--tracking-tight);
+  line-height: 1.15;
+}
+
+.aq-brand__tag {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  line-height: 1.3;
+}
+
+/* ---- Left rail (desktop) ------------------------------------------------ */
+
+.aq-rail {
+  display: none;
+}
+
+.aq-frame {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.aq-main {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  padding: var(--s-5) max(var(--s-4), var(--safe-l)) calc(var(--s-16) + var(--safe-b))
+    max(var(--s-4), var(--safe-r));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.aq-main--flush {
+  gap: var(--s-4);
+}
+
+/* ---- Page header -------------------------------------------------------- */
+
+.aq-pagehead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.aq-pagehead__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.aq-pagehead__title {
+  font-size: var(--text-2xl);
+  font-weight: 680;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+
+.aq-pagehead__lead {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  max-width: 46ch;
+  line-height: var(--leading-relaxed);
+}
+
+/* ---- Section stamp ------------------------------------------------------ */
+
+.aq-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  direction: ltr;
+  white-space: nowrap;
+}
+
+/* ---- Two-pane work area (desktop live session) -------------------------- */
+
+.aq-split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.aq-split__side {
+  min-width: 0;
+}
+
+/* ---- Sticky bottom action bar (mobile) ---------------------------------- */
+
+.aq-actionbar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  gap: var(--s-3);
+  padding: var(--s-3) max(var(--s-4), var(--safe-l)) calc(var(--s-3) + var(--safe-b))
+    max(var(--s-4), var(--safe-r));
+  background: color-mix(in srgb, var(--canvas) 92%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  border-top: 1px solid var(--line);
+}
+
+.aq-actionbar > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.aq-actionbar .aq-btn--ghost {
+  flex: 0 1 auto;
+}
+
+/* ---- Mode switch (segmented) -------------------------------------------- */
+
+.aq-modeswitch {
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+
+.aq-modeswitch__opt {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding-inline: var(--s-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  border-radius: var(--r-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-2);
+  transition:
+    background var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+
+.aq-modeswitch__opt:hover {
+  color: var(--ink);
+}
+
+.aq-modeswitch__opt[aria-current='page'],
+.aq-modeswitch__opt[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+.aq-modeswitch__opt[aria-current='page'] svg,
+.aq-modeswitch__opt[aria-pressed='true'] svg {
+  color: var(--accent);
+}
+
+.aq-modeswitch--block {
+  width: 100%;
+}
+
+/* ---- Rail navigation ---------------------------------------------------- */
+
+.aq-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aq-nav__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: start;
+  transition:
+    background var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.aq-nav__item:hover {
+  background: var(--surface-inset);
+  color: var(--ink);
+}
+
+/* Ledger tab: the active entry is marked with a rule in the margin. */
+.aq-nav__item::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  translate: 0 -50%;
+  width: 2px;
+  height: 1.25rem;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.aq-nav__item[aria-current='page'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+.aq-nav__item[aria-current='page']::before {
+  opacity: 1;
+}
+
+.aq-nav__item svg {
+  color: var(--ink-3);
+}
+
+.aq-nav__item[aria-current='page'] svg {
+  color: var(--accent);
+}
+
+.aq-nav__count {
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  font-weight: 640;
+  color: var(--ink-3);
+  background: var(--surface-inset);
+  border-radius: var(--r-full);
+  padding: 1px var(--s-2);
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* ---- Rail footer -------------------------------------------------------- */
+
+.aq-raildetail {
+  margin-top: auto;
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.aq-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aq-kv__k {
+  font-size: var(--text-2xs);
+  font-weight: 640;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.aq-kv__v {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================================
+   Desktop: rail layout
+   ========================================================================= */
+
+@media (min-width: 64rem) {
+  .aq-app {
+    flex-direction: row;
+  }
+
+  .aq-rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    flex: 0 0 var(--rail-w);
+    width: var(--rail-w);
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    padding: var(--s-5) var(--s-4);
+    padding-inline-start: max(var(--s-4), var(--safe-l));
+    background: var(--surface);
+    border-inline-end: 1px solid var(--line);
+  }
+
+  .aq-topbar {
+    position: static;
+    display: none;
+  }
+
+  .aq-frame {
+    min-width: 0;
+  }
+
+  .aq-main {
+    padding: var(--s-8) var(--s-8) var(--s-12);
+    gap: var(--s-6);
+  }
+
+  .aq-actionbar {
+    display: none;
+  }
+}
+
+@media (min-width: 90rem) {
+  .aq-main {
+    padding-inline: var(--s-10);
+  }
+}
+
+/* =========================================================================
+   Two-pane: scanner + recent scans side by side on wide screens
+   ========================================================================= */
+
+@media (min-width: 68rem) {
+  .aq-split {
+    flex-direction: row;
+    align-items: start;
+    gap: var(--s-6);
+  }
+
+  .aq-split__main {
+    flex: 1 1 30rem;
+    min-width: 0;
+  }
+
+  .aq-split__side {
+    flex: 0 1 22rem;
+    position: sticky;
+    top: var(--s-6);
+  }
+}
+
+/* Utility: visually centre a block, used by centred pages */
+.aq-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
+  text-align: center;
+}

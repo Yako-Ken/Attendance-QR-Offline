@@ -1,0 +1,216 @@
+/* =========================================================================
+   Design tokens — "Academic register"
+   A calm, durable, paper-and-ink system built for a high-frequency operational
+   tool. One institutional accent, hairline rules, tabular numerals, restrained
+   radii. Nothing decorative that does not earn its place.
+   ========================================================================= */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- Type -------------------------------------------------------- */
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans Arabic', 'SF Arabic', 'Geeza Pro', 'Dubai', Tahoma, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Cascadia Code', 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  --text-2xs: 0.6875rem; /* 11px — uppercase utility labels only */
+  --text-xs: 0.78125rem; /* 12.5px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px — never below this for body copy on mobile */
+  --text-md: 1.0625rem; /* 17px */
+  --text-lg: 1.25rem; /* 20px */
+  --text-xl: 1.5rem; /* 24px */
+  --text-2xl: 1.875rem; /* 30px */
+  --text-3xl: 2.375rem; /* 38px */
+  --text-4xl: 3rem; /* 48px */
+
+  --leading-tight: 1.18;
+  --leading-snug: 1.32;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.62; /* Arabic sits comfortably here */
+
+  --tracking-label: 0.09em;
+  --tracking-tight: -0.014em;
+
+  /* ---- Space (4px base) -------------------------------------------- */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.25rem;
+  --s-6: 1.5rem;
+  --s-7: 1.75rem;
+  --s-8: 2rem;
+  --s-10: 2.5rem;
+  --s-12: 3rem;
+  --s-16: 4rem;
+
+  /* ---- Radii (restrained by design) ------------------------------- */
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-full: 999px;
+
+  /* ---- Motion ------------------------------------------------------ */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-4: 460ms;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.64, 1);
+
+  /* ---- Layout ------------------------------------------------------ */
+  --shell-max: 78rem;
+  --rail-w: 15.5rem;
+  --tap: 2.75rem; /* 44px minimum touch target */
+  --tap-lg: 3rem;
+  --header-h: 3.5rem;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --z-sticky: 20;
+  --z-sheet: 40;
+  --z-toast: 60;
+}
+
+/* =========================================================================
+   Light — warm paper, ink, institutional blue
+   ========================================================================= */
+:root,
+[data-theme='light'] {
+  --canvas: #f6f5f1;
+  --canvas-sunken: #eceae3;
+  --surface: #ffffff;
+  --surface-2: #faf9f6;
+  --surface-inset: #f2f1eb;
+
+  --line: #e3e1d8;
+  --line-strong: #cfccc0;
+  --line-hairline: #edebe4;
+
+  --ink: #16181d;
+  --ink-2: #4b4f58;
+  --ink-3: #787c85;
+  --ink-inverse: #ffffff;
+
+  --accent: #1b4d8f;
+  --accent-hover: #17427e;
+  --accent-active: #123668;
+  --accent-ink: #ffffff;
+  --accent-soft: #e7eefa;
+  --accent-line: #b9d0ee;
+
+  --ok: #1a6b47;
+  --ok-soft: #e2f0e8;
+  --ok-line: #b6d8c6;
+
+  --warn: #8a5a12;
+  --warn-soft: #faf0d9;
+  --warn-line: #e6cf9c;
+
+  --danger: #a32b28;
+  --danger-soft: #fbe9e7;
+  --danger-line: #eec4c1;
+
+  --focus-ring: #1b4d8f;
+
+  --shadow-1: 0 1px 1px rgb(16 18 22 / 0.04), 0 1px 2px rgb(16 18 22 / 0.05);
+  --shadow-2: 0 1px 2px rgb(16 18 22 / 0.05), 0 4px 12px -3px rgb(16 18 22 / 0.09);
+  --shadow-3: 0 2px 6px rgb(16 18 22 / 0.06), 0 18px 40px -12px rgb(16 18 22 / 0.22);
+  --shadow-qr: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 8px 28px -12px rgb(16 18 22 / 0.28);
+
+  --scrim: rgb(16 18 22 / 0.42);
+}
+
+/* =========================================================================
+   Dark — graphite, ink-blue accent, same structure
+   ========================================================================= */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --canvas: #101216;
+    --canvas-sunken: #0a0b0e;
+    --surface: #171a1f;
+    --surface-2: #1c2026;
+    --surface-inset: #101318;
+
+    --line: #282c34;
+    --line-strong: #3b404a;
+    --line-hairline: #20242a;
+
+    --ink: #eceef1;
+    --ink-2: #b0b5bf;
+    --ink-3: #838993;
+    --ink-inverse: #0d1014;
+
+    --accent: #5f9dff;
+    --accent-hover: #7caeff;
+    --accent-active: #a3c6ff;
+    --accent-ink: #08111f;
+    --accent-soft: #16233a;
+    --accent-line: #2b4470;
+
+    --ok: #4cbd86;
+    --ok-soft: #11251c;
+    --ok-line: #22503a;
+
+    --warn: #e0a94a;
+    --warn-soft: #29200f;
+    --warn-line: #55411a;
+
+    --danger: #f0817d;
+    --danger-soft: #2b1616;
+    --danger-line: #5d2c2a;
+
+    --focus-ring: #7caeff;
+
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.5);
+    --shadow-3: 0 4px 10px rgb(0 0 0 / 0.45), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+    --shadow-qr: 0 8px 28px -12px rgb(0 0 0 / 0.8);
+
+    --scrim: rgb(4 5 7 / 0.62);
+  }
+}
+
+/* Explicit manual override wins over the media query. */
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='dark'] {
+    --canvas: #101216;
+    --canvas-sunken: #0a0b0e;
+    --surface: #171a1f;
+    --surface-2: #1c2026;
+    --surface-inset: #101318;
+    --line: #282c34;
+    --line-strong: #3b404a;
+    --line-hairline: #20242a;
+    --ink: #eceef1;
+    --ink-2: #b0b5bf;
+    --ink-3: #838993;
+    --ink-inverse: #0d1014;
+    --accent: #5f9dff;
+    --accent-hover: #7caeff;
+    --accent-active: #a3c6ff;
+    --accent-ink: #08111f;
+    --accent-soft: #16233a;
+    --accent-line: #2b4470;
+    --ok: #4cbd86;
+    --ok-soft: #11251c;
+    --ok-line: #22503a;
+    --warn: #e0a94a;
+    --warn-soft: #29200f;
+    --warn-line: #55411a;
+    --danger: #f0817d;
+    --danger-soft: #2b1616;
+    --danger-line: #5d2c2a;
+    --focus-ring: #7caeff;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 8px 20px -6px rgb(0 0 0 / 0.5);
+    --shadow-3: 0 4px 10px rgb(0 0 0 / 0.45), 0 24px 48px -16px rgb(0 0 0 / 0.7);
+    --shadow-qr: 0 8px 28px -12px rgb(0 0 0 / 0.8);
+    --scrim: rgb(4 5 7 / 0.62);
+  }
+}
