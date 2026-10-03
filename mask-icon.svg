@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Attendance QR">
+  <rect width="512" height="512" fill="#000000" />
+  <g fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M136 184v-40a8 8 0 0 1 8-8h40" />
+    <path d="M328 136h40a8 8 0 0 1 8 8v40" />
+    <path d="M376 328v40a8 8 0 0 1-8 8h-40" />
+    <path d="M184 376h-40a8 8 0 0 1-8-8v-40" />
+  </g>
+  <g fill="#5f9dff">
+    <circle cx="256" cy="200" r="34" />
+    <circle cx="256" cy="312" r="34" />
+  </g>
+</svg>
