@@ -118,6 +118,31 @@ async function canvasCoverage(page) {
   });
 }
 
+/**
+ * Switch mode using whichever navigation the current breakpoint renders.
+ * Selectors are structural as well as textual because the segmented control and
+ * the rail carry the same labels, and only one of them is visible at a time.
+ */
+async function switchMode(page, mode) {
+  const label = mode === 'attendance' ? 'Attendance' : 'Student';
+  const candidates = [
+    `.aq-modeswitch__opt[aria-selected="false"]:has-text("${label}")`,
+    `.aq-nav__item:nth-child(${mode === 'attendance' ? 2 : 1}):has-text("${label}")`,
+    `.aq-modeswitch__opt:nth-child(${mode === 'attendance' ? 2 : 1})`,
+    `.aq-nav__item:nth-child(${mode === 'attendance' ? 2 : 1})`,
+  ];
+
+  for (const selector of candidates) {
+    const target = page.locator(selector).first();
+    if (await target.isVisible().catch(() => false)) {
+      await target.click();
+      await page.waitForTimeout(250);
+      return;
+    }
+  }
+  throw new Error(`No visible navigation control for "${mode}"`);
+}
+
 async function shot(page, name) {
   await page.screenshot({ path: join(artifacts, `${name}.png`), fullPage: false });
 }
@@ -125,7 +150,7 @@ async function shot(page, name) {
 async function fillStudent(page, student) {
   await page.getByLabel(/Full name/i).fill(student.name);
   await page.getByLabel(/Student ID/i).fill(student.id);
-  await page.selectOption('select', student.year);
+  await page.getByLabel(/Academic year/i).fill(student.year);
   await page.getByRole('button', { name: /Save and show my QR/i }).click();
   await page.waitForSelector('canvas.aq-pass__canvas', { timeout: 10000 });
 }
@@ -224,6 +249,30 @@ async function main() {
     await page.waitForSelector('.aq-scanner__badge', { timeout: 20000 });
     check('camera starts from the real getUserMedia path', true);
 
+    /**
+     * Regression guard: the scanner used to tear its own stream down the moment
+     * it reached `running`, so the preview appeared for a moment and died. The
+     * camera must still be streaming several seconds later, with real frames
+     * reaching the video element.
+     */
+    await page.waitForTimeout(4000);
+    const stillLive = await page.evaluate(() => {
+      const video = document.querySelector('video.aq-scanner__video');
+      if (!(video instanceof HTMLVideoElement)) return null;
+      return {
+        running: document.querySelector('.aq-scanner__badge') !== null,
+        width: video.videoWidth,
+        height: video.videoHeight,
+        readyState: video.readyState,
+      };
+    });
+    check('scanner keeps running instead of switching itself off', stillLive?.running === true, JSON.stringify(stillLive));
+    check(
+      'camera delivers real frames to the video element',
+      (stillLive?.width ?? 0) > 0 && (stillLive?.height ?? 0) > 0 && (stillLive?.readyState ?? 0) >= 2,
+      `${stillLive?.width}x${stillLive?.height} readyState=${stillLive?.readyState}`,
+    );
+
     // The fake camera shows student 1's QR; it should be decoded and recorded.
     await page.waitForFunction(
       () => document.querySelectorAll('.aq-ledger__item').length > 0,
@@ -236,6 +285,19 @@ async function main() {
     check('decoded name matches the QR payload', firstName?.trim() === DEVICES.student1.name, firstName ?? '');
     const firstId = await page.locator('.aq-ledger__item .aq-mono').first().textContent();
     check('decoded student ID keeps leading zeros', firstId?.trim() === '001234', firstId ?? '');
+
+    /**
+     * The same code stays in front of the lens for the whole run. A correct
+     * implementation records it once and then rejects every repeat, so the count
+     * must not creep upwards no matter how long the scanner runs.
+     */
+    await page.waitForTimeout(8000);
+    const totalWhileHeld = await page.locator('.aq-metric__v').first().textContent();
+    check(
+      'holding the same QR in frame never records a second entry',
+      totalWhileHeld?.trim() === '1',
+      `total=${totalWhileHeld} after 8s`,
+    );
 
     await shot(page, '04-live-scanning-phone');
 
@@ -276,7 +338,9 @@ async function main() {
     check('student profile is available offline', recovered?.trim() === '001234', recovered ?? '');
 
     await page.getByRole('tab', { name: /Attendance/i }).click();
-    await page.waitForSelector('.aq-scanner, .aq-section-form', { timeout: 10000 });
+    // Any of the three attendance stages is acceptable here; the app restores
+    // whichever one the session was on when the network went away.
+    await page.waitForSelector('.aq-section-form, .aq-scanner, .aq-export', { timeout: 10000 });
     const offlineTotal = await page.locator('.aq-metric__v').first().textContent();
     check('attendance session is available offline', offlineTotal?.trim() === '1', `total=${offlineTotal}`);
     await shot(page, '06-offline-phone');
@@ -304,18 +368,9 @@ async function main() {
       );
 
       await shot(page, `10-student-${viewport.name}`);
-
-      await page.getByRole('tab', { name: /Attendance/i }).click();
-      await page.waitForTimeout(250);
-      const qrEdge = await page.evaluate(() => {
-        const canvas = document.querySelector('canvas.aq-pass__canvas');
-        return canvas === null ? 0 : canvas.getBoundingClientRect().width;
-      });
-      void qrEdge;
-
+      await switchMode(page, 'attendance');
       await shot(page, `11-attendance-${viewport.name}`);
-      await page.getByRole('tab', { name: /Student/i }).click();
-      await page.waitForTimeout(150);
+      await switchMode(page, 'student');
     }
 
     check('no console errors during the run', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

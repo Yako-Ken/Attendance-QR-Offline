@@ -185,13 +185,31 @@ export function useScanner(
       .catch(() => undefined);
   }, [torchOn]);
 
-  // Restart when the requested camera changes while running.
+  /*
+   * Restart only when the *requested camera* changes.
+   *
+   * This must not depend on `status`: the effect tears the stream down, so
+   * including the scanner's own state in the dependency list makes it fire the
+   * instant the scanner reaches `running` and switch the camera straight back
+   * off. A ref records which camera is currently loaded, and the previous status
+   * is read through a ref rather than tracked, so neither can retrigger this.
+   */
+  const loadedFacing = useRef(facingMode);
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  const startRef = useRef(start);
+  startRef.current = start;
+
   useEffect(() => {
     if (!active) return;
-    if (status !== 'running') return;
+    if (loadedFacing.current === facingMode) return;
+
+    const wasRunning = statusRef.current === 'running';
+    loadedFacing.current = facingMode;
     teardown();
     setStatus('idle');
-  }, [active, facingMode, status, teardown]);
+    if (wasRunning) startRef.current();
+  }, [active, facingMode, teardown]);
 
   return {
     status,
