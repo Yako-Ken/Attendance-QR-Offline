@@ -68,6 +68,13 @@ export default defineConfig({
     cssTarget: 'chrome111',
     sourcemap: false,
     reportCompressedSize: true,
+    /**
+     * Every rebuild must start from an empty folder. Vite's hashed file names mean
+     * a leftover asset is never referenced again, yet the service worker
+     * precaches whatever it finds in the output, so stale files would be shipped
+     * to every user and cached forever.
+     */
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks(id) {
