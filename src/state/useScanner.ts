@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { AttendanceQrPayload } from '../types/qr'
-import { parseAttendanceQr } from '../lib/validation/qr'
+import { validateScannedQr } from '../lib/validation/qr'
 import type { FrameSampler, ScanCooldown } from '../services/scanner/decode'
 
 export type ScannerStatus =
@@ -14,6 +14,8 @@ export type ScannerOutcome =
   | { readonly kind: 'accepted'; readonly payload: AttendanceQrPayload }
   | { readonly kind: 'rejected'; readonly message: string };
 
+const REJECT_SILENCE_MS = 9000;
+
 export interface ScannerController {
   readonly status: ScannerStatus;
   readonly facingMode: 'environment' | 'user';
@@ -24,6 +26,9 @@ export interface ScannerController {
   readonly torchSupported: boolean;
   readonly torchOn: boolean;
   readonly toggleTorch: () => void;
+  /** Suspend decoding without releasing the camera, so a dialog can be shown. */
+  readonly paused: boolean;
+  readonly setPaused: (value: boolean) => void;
 }
 
 /**
@@ -49,6 +54,9 @@ export function useScanner(
   outcomeRef.current = onOutcome;
 
   const [status, setStatus] = useState<ScannerStatus>('idle');
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
@@ -83,9 +91,24 @@ export function useScanner(
 
     const tick = (now: number): void => {
       if (videoRef.current !== video || streamRef.current === null) return;
+      if (pausedRef.current) {
+        frameRef.current = requestAnimationFrame(tick);
+        return;
+      }
       const text = sampler.sample(video, decoder, now);
       if (text !== null && !cooldown.shouldIgnore(text, now)) {
-        const parsed = parseAttendanceQr(text);
+        /**
+         * Freshness is judged against the wall clock, not the animation-frame
+         * timestamp: `now` counts from page load, while `issuedAt` is Unix time,
+         * so mixing them would make every genuine code look impossibly far in the
+         * future. The monotonic `now` stays in use for cadence and cooldowns,
+         * where only elapsed time matters.
+         */
+        const parsed = validateScannedQr(text, Date.now());
+        if (!parsed.ok) {
+          // Keep re-reading the same rejected code silent for a while.
+          cooldown.ignoreFor(text, REJECT_SILENCE_MS);
+        }
         outcomeRef.current(
           parsed.ok
             ? { kind: 'accepted', payload: parsed.payload }
@@ -221,6 +244,8 @@ export function useScanner(
     torchSupported,
     torchOn,
     toggleTorch,
+    paused,
+    setPaused,
   };
 }
 

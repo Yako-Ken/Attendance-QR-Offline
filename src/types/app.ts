@@ -8,12 +8,15 @@ export interface AppSettings {
   haptics: boolean;
   /** Request a screen wake lock while the scanner is running. */
   keepAwake: boolean;
+  /** Ask for a note dialog immediately after each successful scan. */
+  notePromptOnScan: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   haptics: true,
   keepAwake: true,
+  notePromptOnScan: true,
 };
 
 /**

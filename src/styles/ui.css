@@ -895,3 +895,28 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* ---- Textarea ------------------------------------------------------------ */
+
+.aq-textarea {
+  min-height: 6rem;
+  padding: var(--s-3);
+  resize: vertical;
+  line-height: var(--leading-normal);
+  font-size: var(--text-base);
+}
+
+/* ---- Filename field ------------------------------------------------------ */
+
+.aq-filename-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.aq-filename-input {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  direction: ltr;
+  text-align: start;
+}

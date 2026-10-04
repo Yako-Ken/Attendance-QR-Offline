@@ -22,6 +22,7 @@ export type IconName =
   | 'stop'
   | 'refresh'
   | 'edit'
+  | 'note'
   | 'trash'
   | 'users'
   | 'download'
@@ -54,6 +55,7 @@ const PATHS: Record<IconName, string> = {
   stop: 'M7 7h10v10H7z',
   refresh: 'M20 12a8 8 0 1 1-2.6-5.9M20 4v4h-4',
   edit: 'M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17zM14 6.5l3.5 3.5',
+  note: 'M6 3.5h8.5L19 8v12.5H6zM14 3.5V8h5M9 12h7M9 15.5h7M9 19h4',
   trash: 'M4 6.5h16M9.5 6.5V4.5h5v2M6.5 6.5l1 13h9l1-13M10 10v6M14 10v6',
   users: 'M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2.5 20a6 6 0 0 1 12 0M16 4.5a3.5 3.5 0 0 1 0 7M17.5 14.5a6 6 0 0 1 4 5.5',
   download: 'M12 3.5v11M7.5 10.5 12 15l4.5-4.5M4 19.5h16',

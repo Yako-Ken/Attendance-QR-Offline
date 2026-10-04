@@ -9,6 +9,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { StudentProfile } from '../../types/student'
+import { QR_ROTATION_MS } from '../../types/qr'
 import { buildAttendanceQr, serialiseAttendanceQr } from '../../lib/validation/qr'
 import { encodeQrCached } from '../../services/qr/encode'
 import { renderQrToCanvas } from '../../services/qr/render'
@@ -27,6 +28,28 @@ export function StudentQrCard({ profile, deviceId, onEdit }: StudentQrCardProps)
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [edge, setEdge] = useState(280);
+  const [issuedAt, setIssuedAt] = useState(() => Date.now());
+
+  /**
+   * The symbol is reissued on a short cycle so that a screenshot taken a
+   * minute ago is refused when it is later scanned. Background tabs have
+   * their timers throttled, so the symbol is also refreshed the moment the tab
+   * becomes visible again.
+   */
+  useEffect(() => {
+    const reissue = (): void => setIssuedAt(Date.now());
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'visible') reissue();
+    };
+    const timer = window.setInterval(reissue, QR_ROTATION_MS);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', reissue);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', reissue);
+    };
+  }, []);
 
   const payloadText = useMemo(() => {
     try {
@@ -36,12 +59,13 @@ export function StudentQrCard({ profile, deviceId, onEdit }: StudentQrCardProps)
           studentId: profile.studentId,
           academicYear: profile.academicYear,
           deviceId,
+          issuedAt,
         }),
       );
     } catch {
       return '';
     }
-  }, [profile.academicYear, profile.fullName, profile.studentId, deviceId]);
+  }, [deviceId, issuedAt, profile.academicYear, profile.fullName, profile.studentId]);
 
   // Encoding is a pure function of the payload, so it is derived during render
   // rather than pushed into state from an effect.

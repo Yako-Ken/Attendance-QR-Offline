@@ -39,6 +39,7 @@ function payload(overrides: Partial<AttendanceQrPayload> = {}): AttendanceQrPayl
     studentId: '001234',
     academicYear: '3',
     deviceId: DEVICE_A,
+    issuedAt: Date.parse(T0),
     ...overrides,
   };
 }

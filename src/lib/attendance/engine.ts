@@ -66,6 +66,7 @@ export function createRecord(
     deviceId: payload.deviceId,
     scannedAt: meta.scannedAt ?? nowIso(),
     duplicateDeviceFlag: false,
+    note: '',
   };
 }
 
@@ -204,6 +205,7 @@ export function editRecord(
       fullName: nextFullName,
       studentId: nextStudentId,
       academicYear: nextYear,
+      note: patch.note === undefined ? current.note : normalizeNote(patch.note),
     },
   };
 }
@@ -233,6 +235,44 @@ export function removeRecord(session: AttendanceSession, recordId: string): Atte
   const records = session.records.filter((record) => record.id !== recordId);
   if (records.length === session.records.length) return session;
   return { ...session, records, updatedAt: nowIso() };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Notes                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Notes are deliberately short and free of control characters. */
+export const NOTE_MAX = 200;
+
+export function normalizeNote(input: string): string {
+  let out = '';
+  for (const char of input.normalize('NFC')) {
+    const code = char.codePointAt(0);
+    if (code === undefined) continue;
+    if (code < 0x20 && code !== 0x09) continue;
+    out += char;
+  }
+  return out.replace(/\s+/gu, ' ').trim().slice(0, NOTE_MAX);
+}
+
+/**
+ * Write or clear a note on one record. Notes are never validated against the
+ * rest of the session, because they carry no identifying structure.
+ */
+export function setRecordNote(
+  session: AttendanceSession,
+  recordId: string,
+  note: string,
+  now: string = nowIso(),
+): AttendanceSession | null {
+  const index = session.records.findIndex((record) => record.id === recordId);
+  if (index === -1) return null;
+  const existing = session.records[index];
+  if (existing === undefined) return null;
+
+  const records = [...session.records];
+  records[index] = { ...existing, note: normalizeNote(note) };
+  return { ...session, records, updatedAt: now };
 }
 
 /* -------------------------------------------------------------------------- */

@@ -105,7 +105,8 @@ function isSettings(value: unknown): value is Partial<AppSettings> {
   return (
     (record['theme'] === undefined || typeof record['theme'] === 'string') &&
     (record['haptics'] === undefined || typeof record['haptics'] === 'boolean') &&
-    (record['keepAwake'] === undefined || typeof record['keepAwake'] === 'boolean')
+    (record['keepAwake'] === undefined || typeof record['keepAwake'] === 'boolean') &&
+    (record['notePromptOnScan'] === undefined || typeof record['notePromptOnScan'] === 'boolean')
   );
 }
 
@@ -119,6 +120,10 @@ function mergeSettings(stored: Partial<AppSettings>): AppSettings {
     haptics: typeof stored.haptics === 'boolean' ? stored.haptics : DEFAULT_SETTINGS.haptics,
     keepAwake:
       typeof stored.keepAwake === 'boolean' ? stored.keepAwake : DEFAULT_SETTINGS.keepAwake,
+    notePromptOnScan:
+      typeof stored.notePromptOnScan === 'boolean'
+        ? stored.notePromptOnScan
+        : DEFAULT_SETTINGS.notePromptOnScan,
   };
 }
 
@@ -149,7 +154,8 @@ function isRecordShape(value: unknown): value is AttendanceRecord {
     typeof record['academicYear'] === 'string' &&
     typeof record['deviceId'] === 'string' &&
     typeof record['scannedAt'] === 'string' &&
-    typeof record['duplicateDeviceFlag'] === 'boolean'
+    typeof record['duplicateDeviceFlag'] === 'boolean' &&
+    (record['note'] === undefined || typeof record['note'] === 'string')
   );
 }
 
@@ -183,7 +189,8 @@ function coerceSession(value: unknown): AttendanceSession | undefined {
     if (!isRecordShape(raw)) continue;
     const year: unknown = raw.academicYear;
     const academicYear: AcademicYear = isAcademicYear(year) ? year : '1';
-    records.push({ ...raw, academicYear });
+    const note: unknown = raw.note;
+    records.push({ ...raw, academicYear, note: typeof note === 'string' ? note : '' });
   }
 
   return {

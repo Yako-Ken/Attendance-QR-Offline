@@ -3,20 +3,20 @@
  *
  * The workbook is built in the browser on demand — the XLSX code is dynamically
  * imported so a student who only ever shows a QR never downloads it. The exact
- * column list is shown before export, because "what will the university see" is
- * the question a teaching assistant actually needs answered.
+ * column list and the file name are both shown before export, because "what
+ * will the university see, and what will it be called" are the two questions a
+ * teaching assistant actually needs answered.
  */
 
 import { useCallback, useMemo, useState } from 'react'
-import type { ToastTone } from '../../types/app'
 import type { AttendanceSession } from '../../types/attendance'
-import {
-  EXPORT_COLUMNS,
-  FORBIDDEN_EXPORT_TOKENS,
-} from '../../services/export/attendanceWorkbook'
-import { attendanceFileNameWithTime, attendanceFileName } from '../../lib/util/filename'
+import type { ToastTone } from '../../types/app'
+import { EXPORT_COLUMNS, FORBIDDEN_EXPORT_TOKENS } from '../../services/export/attendanceWorkbook'
+import { attendanceFileNameWithTime } from '../../lib/util/filename'
+import { sanitizeExportName } from '../../lib/util/exportName'
 import { formatDateTime, localDateStamp } from '../../lib/util/time'
 import { downloadWorkbook, shareOrDownload } from '../../services/export/deliver'
+import { Field } from '../ui/primitives'
 import { Icon } from '../ui/Icon'
 
 export interface ExportPanelProps {
@@ -25,24 +25,30 @@ export interface ExportPanelProps {
 }
 
 
-
 export function ExportPanel({ session, onNotify }: ExportPanelProps) {
   const [busy, setBusy] = useState<'download' | 'share' | null>(null);
 
-  const fileName = useMemo(() => {
-    const stamp = localDateStamp(new Date(session.createdAt));
-    const time = new Date(session.createdAt).toTimeString().slice(0, 5).replace(':', '');
-    return attendanceFileNameWithTime(session.sectionName, stamp, time || '0000');
+  const generated = useMemo(() => {
+    const created = new Date(session.createdAt);
+    const stamp = localDateStamp(created);
+    const time = created.toTimeString().slice(0, 5).replace(':', '');
+    return attendanceFileNameWithTime(session.sectionName, stamp, time === '' ? '0000' : time);
   }, [session]);
 
-  const fallbackName = useMemo(
-    () => attendanceFileName(session.sectionName, localDateStamp(new Date(session.createdAt))),
-    [session],
-  );
+  const [fileName, setFileName] = useState(generated);
+  const [touched, setTouched] = useState(false);
+
+  // Follow the section until the assistant edits the name themselves, after
+  // which their choice wins for the rest of the session.
+  const effectiveName = touched ? fileName : generated;
+  const cleanName = sanitizeExportName(effectiveName);
+  const invalid = cleanName === null;
 
   const build = useCallback(async (): Promise<Uint8Array> => {
-    const { buildAttendanceWorkbook } = await import('../../services/export/attendanceWorkbook');
-    return buildAttendanceWorkbook(session, formatDateTime).bytes;
+    const { buildAttendanceWorkbook: build } = await import(
+      '../../services/export/attendanceWorkbook'
+    );
+    return build(session, formatDateTime).bytes;
   }, [session]);
 
   const run = useCallback(
@@ -51,11 +57,19 @@ export function ExportPanel({ session, onNotify }: ExportPanelProps) {
         onNotify('warn', 'There is nothing to export yet', 'Record at least one student first.');
         return;
       }
+      if (invalid) {
+        onNotify('warn', 'The file name is not usable', 'Use letters, digits, or dashes.');
+        return;
+      }
+
       setBusy(mode);
       try {
         const bytes = await build();
-        const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-        const leaked = FORBIDDEN_EXPORT_TOKENS.find((token) => text.includes(token));
+
+        // Defence in depth: the unit tests assert this, and the guard catches a
+        // regression before a file leaves the device.
+        const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+        const leaked = FORBIDDEN_EXPORT_TOKENS.find((token) => decoded.includes(token));
         if (leaked !== undefined) {
           onNotify(
             'danger',
@@ -69,7 +83,7 @@ export function ExportPanel({ session, onNotify }: ExportPanelProps) {
           const { createWorkbookBlob } = await import('../../services/export/deliver');
           const result = await shareOrDownload(
             createWorkbookBlob(bytes),
-            fileName === '' ? fallbackName : fileName,
+            cleanName,
             `Attendance ${session.sectionName}`,
           );
           if (!result.ok) {
@@ -88,7 +102,7 @@ export function ExportPanel({ session, onNotify }: ExportPanelProps) {
           return;
         }
 
-        const result = downloadWorkbook(bytes, fileName === '' ? fallbackName : fileName);
+        const result = downloadWorkbook(bytes, cleanName);
         if (!result.ok) {
           onNotify('danger', 'The Excel file could not be saved', result.reason);
           return;
@@ -96,7 +110,7 @@ export function ExportPanel({ session, onNotify }: ExportPanelProps) {
         onNotify(
           'ok',
           'Excel file saved',
-          `${session.records.length} student${session.records.length === 1 ? '' : 's'} written.`,
+          `${session.records.length} student${session.records.length === 1 ? '' : 's'} written to ${cleanName}`,
         );
       } catch {
         onNotify(
@@ -108,15 +122,33 @@ export function ExportPanel({ session, onNotify }: ExportPanelProps) {
         setBusy(null);
       }
     },
-    [build, fallbackName, fileName, onNotify, session.records.length, session.sectionName],
+    [build, cleanName, invalid, onNotify, session.records.length, session.sectionName],
   );
 
   return (
     <div className="aq-export">
-      <div className="aq-filename">
-        <Icon name="download" size={15} />
-        <span className="aq-mono">{fileName === '' ? fallbackName : fileName}</span>
-      </div>
+      <Field
+        label="File name · اسم الملف"
+        error={invalid ? 'This name is empty once the characters your system forbids are removed.' : undefined}
+        hint="Saved exactly as written, minus characters Windows and macOS reject."
+      >
+        {({ id, describedBy, invalid: fieldInvalid }) => (
+          <input
+            id={id}
+            className="aq-input aq-filename-input"
+            type="text"
+            value={effectiveName}
+            onChange={(event) => {
+              setTouched(true);
+              setFileName(event.target.value);
+            }}
+            aria-describedby={describedBy}
+            aria-invalid={fieldInvalid}
+            spellCheck={false}
+            dir="ltr"
+          />
+        )}
+      </Field>
 
       <div>
         <p className="aq-label">Worksheet columns</p>
@@ -163,5 +195,5 @@ export function ExportPanel({ session, onNotify }: ExportPanelProps) {
         detects that automatically.
       </p>
     </div>
-  )
+  );
 }

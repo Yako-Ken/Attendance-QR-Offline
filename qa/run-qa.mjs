@@ -54,6 +54,8 @@ const VIEWPORTS = [
 
 const results = [];
 let failures = 0;
+/** Timestamp baked into the fake camera's QR, for freshness diagnostics. */
+let cameraIssuedAt = 0;
 
 function check(label, condition, detail = '') {
   const ok = condition === true;
@@ -64,7 +66,7 @@ function check(label, condition, detail = '') {
 }
 
 function makeCamera(student, file) {
-  execFileSync(
+  const printed = execFileSync(
     'python',
     [
       join(root, 'qa', 'make_fake_camera.py'),
@@ -74,8 +76,10 @@ function makeCamera(student, file) {
       student.year,
       student.deviceId,
     ],
-    { stdio: 'pipe' },
+    { stdio: 'pipe', encoding: 'utf8' },
   );
+  const stamped = /"issuedAt":(\d+)/.exec(printed);
+  if (stamped !== null) cameraIssuedAt = Number(stamped[1]);
   return file;
 }
 
@@ -186,7 +190,7 @@ async function main() {
       acceptDownloads: true,
       locale: 'en-GB',
     });
-    const page = await context.newPage();
+const page = await context.newPage();
 
     const consoleErrors = [];
     page.on('console', (message) => {
@@ -274,22 +278,89 @@ async function main() {
     );
 
     // The fake camera shows student 1's QR; it should be decoded and recorded.
-    await page.waitForFunction(
-      () => document.querySelectorAll('.aq-ledger__item').length > 0,
-      undefined,
-      { timeout: 25000 },
-    );
-    check('a scanned QR is decoded and recorded', true);
+    const recorded = await page
+      .waitForFunction(
+        () => document.querySelectorAll('.aq-ledger__item').length > 0,
+        undefined,
+        { timeout: 25000 },
+      )
+      .then(() => true)
+      .catch(async () => {
+        /**
+         * A silent timeout hides the real cause, so the scanner's own verdict is
+         * reported: a rejected code leaves an explanation on screen.
+         */
+        const why = await page.evaluate(() => ({
+          ribbon: document.querySelector('.aq-ribbon')?.textContent?.trim() ?? null,
+          toast: [...document.querySelectorAll('[class*="toast"]')]
+            .map((node) => node.textContent?.trim())
+            .filter(Boolean)
+            .slice(0, 3)
+            .join(' | '),
+          video: `${document.querySelector('video')?.videoWidth ?? 0}x${
+            document.querySelector('video')?.videoHeight ?? 0
+          } readyState=${document.querySelector('video')?.readyState ?? -1}`,
+        }));
+        const browserNow = await page.evaluate(() => Date.now());
+        console.log(
+          '  scan did not record:',
+          JSON.stringify({
+            ...why,
+            qrAgeMs: cameraIssuedAt === 0 ? null : browserNow - cameraIssuedAt,
+          }),
+        );
+        return false;
+      });
+    check('a scanned QR is decoded and recorded', recorded);
 
     const firstName = await page.locator('.aq-ledger__name').first().textContent();
     check('decoded name matches the QR payload', firstName?.trim() === DEVICES.student1.name, firstName ?? '');
     const firstId = await page.locator('.aq-ledger__item .aq-mono').first().textContent();
     check('decoded student ID keeps leading zeros', firstId?.trim() === '001234', firstId ?? '');
 
+    /* ---------------- Note prompt ---------------- */
+
     /**
-     * The same code stays in front of the lens for the whole run. A correct
-     * implementation records it once and then rejects every repeat, so the count
-     * must not creep upwards no matter how long the scanner runs.
+     * A successful scan opens the note prompt by default, and decoding is held
+     * while it is on screen so nobody is recorded behind a dialog. Both halves
+     * of that behaviour are checked here, because a note that silently blocks the
+     * scanner would look identical to a note that merely fails to save.
+     */
+    await page.waitForSelector('form#aq-note-form', { timeout: 10000 });
+    check('a recorded student opens the note prompt', true);
+    const promptSub = await page.locator('.aq-dialog__sub').first().textContent();
+    check(
+      'the prompt names the student it belongs to',
+      /Ahmed/.test(promptSub ?? '') && /001234/.test(promptSub ?? ''),
+      promptSub ?? '',
+    );
+
+    const ledgerDuringDialog = await page.locator('.aq-ledger__item').count();
+    check('the recorded student is already in the ledger while the prompt is open', ledgerDuringDialog === 1);
+
+    await page.fill('.aq-textarea', 'Scored 18/20 in the quiz');
+    await page.getByRole('button', { name: /Save note/i }).click();
+    await page.waitForSelector('form#aq-note-form', { state: 'detached', timeout: 10000 });
+    check('the note dialog can be saved and dismissed', true);
+
+    const savedNote = await page.locator('.aq-ledger__item').first().textContent();
+    check('the saved note is shown on the record', /Scored 18\/20/.test(savedNote ?? ''), (savedNote ?? '').replace(/\s+/g, ' ').slice(0, 90));
+
+    /**
+     * Scanning the same code again must be rejected as a duplicate.
+     *
+     * This is awaited before the hold check below: the warning is transient, and
+     * a student's screen rotates its code every few seconds, so waiting for it
+     * after an unrelated delay can miss it entirely.
+     */
+    await page.waitForSelector('.aq-lastscan--warn', { timeout: 25000 });
+    const duplicateText = await page.locator('.aq-lastscan__title').textContent();
+    check('a repeated scan is reported as already recorded', /Attention/i.test(duplicateText ?? ''), duplicateText ?? '');
+
+    /**
+     * The same student stays in front of the lens for the rest of the run. A
+     * correct implementation records them once and rejects every repeat, so the
+     * count must not creep upwards no matter how long the scanner runs.
      */
     await page.waitForTimeout(8000);
     const totalWhileHeld = await page.locator('.aq-metric__v').first().textContent();
@@ -301,10 +372,6 @@ async function main() {
 
     await shot(page, '04-live-scanning-phone');
 
-    // Scanning the same code again must be rejected as a duplicate.
-    await page.waitForSelector('.aq-lastscan--warn', { timeout: 25000 });
-    const duplicateText = await page.locator('.aq-lastscan__title').textContent();
-    check('a repeated scan is reported as already recorded', /Attention/i.test(duplicateText ?? ''), duplicateText ?? '');
     const totalAfterDuplicate = await page.locator('.aq-metric__v').first().textContent();
     check('a duplicate does not add a record', totalAfterDuplicate?.trim() === '1', `total=${totalAfterDuplicate}`);
 
@@ -323,6 +390,28 @@ async function main() {
       'export filename matches the documented pattern',
       /^attendance_CS-3-A_\d{4}-\d{2}-\d{2}_\d{4}\.xlsx$/.test(download.suggestedFilename()),
       download.suggestedFilename(),
+    );
+
+    /**
+     * The filename is editable, and a name typed by a human is rarely a legal
+     * one. The field is left exactly as typed — rewriting characters under the
+     * cursor mid-word is worse than accepting them — and the cleaning happens at
+     * save time, with the extension preserved so Excel can still open the file.
+     */
+    const nameField = page.locator('input.aq-input').first();
+    await nameField.fill('  March attendance: week 3 / section A  ');
+    check(
+      'the filename field keeps exactly what was typed',
+      (await nameField.inputValue()) === '  March attendance: week 3 / section A  ',
+    );
+
+    const namedDownloadPromise = page.waitForEvent('download', { timeout: 20000 });
+    await page.getByRole('button', { name: /Download Excel/i }).click();
+    const namedDownload = await namedDownloadPromise;
+    check(
+      'the typed filename is cleaned at save time, keeping the extension',
+      namedDownload.suggestedFilename() === 'March-attendance-week-3-section-A.xlsx',
+      namedDownload.suggestedFilename(),
     );
 
     /* ---------------- Offline ---------------- */

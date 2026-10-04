@@ -106,10 +106,15 @@ export class FrameSampler {
  * A QR held in front of the lens is decoded on every sample. Without a
  * cooldown the same code would be re-submitted dozens of times per second, so a
  * payload is suppressed briefly after it is accepted.
+ *
+ * A rejection is muted separately, and only for the offending payload: a stale
+ * screenshot left in front of the lens must not also block the next real student.
  */
 export class ScanCooldown {
   private lastText: string | null = null;
   private lastAt = 0;
+  private mutedText: string | null = null;
+  private mutedUntil = 0;
 
   private readonly windowMs: number;
 
@@ -117,16 +122,32 @@ export class ScanCooldown {
     this.windowMs = windowMs;
   }
 
-  /** True when this text should be ignored as a repeat of the last accepted one. */
+  /** True when this text should be ignored as a repeat of the last read one. */
   shouldIgnore(text: string, now: number): boolean {
+    if (text === this.mutedText && now < this.mutedUntil) return true;
     if (text === this.lastText && now - this.lastAt < this.windowMs) return true;
     this.lastText = text;
     this.lastAt = now;
     return false;
   }
 
+  /**
+   * Silence one specific payload for longer than the normal window.
+   *
+   * A rejected symbol stays in front of the lens, so without this it would be
+   * re-read and re-rejected every couple of seconds, burying the assistant in
+   * repeated warnings. Only this payload is muted; a different code is judged
+   * on its own merits the moment it is seen.
+   */
+  ignoreFor(text: string, ms: number, now: number = Date.now()): void {
+    this.mutedText = text;
+    this.mutedUntil = now + ms;
+  }
+
   reset(): void {
     this.lastText = null;
     this.lastAt = 0;
+    this.mutedText = null;
+    this.mutedUntil = 0;
   }
 }

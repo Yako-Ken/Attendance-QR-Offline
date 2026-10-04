@@ -224,6 +224,8 @@ export function App() {
         onHaptics={(haptics) => updateSettings({ haptics })}
         keepAwake={settings.keepAwake}
         onKeepAwake={(keepAwake) => updateSettings({ keepAwake })}
+        notePromptOnScan={settings.notePromptOnScan}
+        onNotePrompt={(notePromptOnScan) => updateSettings({ notePromptOnScan })}
         deviceId={deviceId}
       />
     </div>
@@ -275,6 +277,8 @@ interface SettingsDialogProps {
   readonly onHaptics: (value: boolean) => void;
   readonly keepAwake: boolean;
   readonly onKeepAwake: (value: boolean) => void;
+  readonly notePromptOnScan: boolean;
+  readonly onNotePrompt: (value: boolean) => void;
   readonly deviceId: string;
 }
 
@@ -293,6 +297,8 @@ function SettingsDialog({
   onHaptics,
   keepAwake,
   onKeepAwake,
+  notePromptOnScan,
+  onNotePrompt,
   deviceId,
 }: SettingsDialogProps) {
   return (
@@ -325,6 +331,12 @@ function SettingsDialog({
           hint="Uses the device's vibration motor when one is available."
           checked={haptics}
           onChange={onHaptics}
+        />
+        <Toggle
+          label="Ask for a note after each scan"
+          hint="Opens a small dialog to write a remark for every student as they are recorded. Turn it off to scan without interruption and add notes later from a record."
+          checked={notePromptOnScan}
+          onChange={onNotePrompt}
         />
         <Toggle
           label="Keep the screen on while scanning"

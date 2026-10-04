@@ -4,13 +4,20 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  QR_CLOCK_SKEW_THRESHOLD_MS,
+  QR_MAX_AGE_MS,
+  QR_ROTATION_MS,
+} from '../../types/qr'
+import {
   QR_MAX_BYTES,
   buildAttendanceQr,
   parseAttendanceQr,
   serialiseAttendanceQr,
+  validateScannedQr,
 } from './qr'
 
 const DEVICE = '3f2a91c4-5d6e-4a7b-8c9d-0e1f2a3b4c5d';
+const NOW = Date.parse('2026-10-01T09:00:00.000Z');
 
 const VALID = {
   version: 1,
@@ -19,6 +26,7 @@ const VALID = {
   studentId: '001234',
   academicYear: '3',
   deviceId: DEVICE,
+  issuedAt: NOW,
 } as const;
 
 describe('QR payload generation', () => {
@@ -28,6 +36,7 @@ describe('QR payload generation', () => {
       studentId: '0099',
       academicYear: '2',
       deviceId: DEVICE,
+      issuedAt: NOW,
     });
 
     expect(payload.version).toBe(1);
@@ -40,6 +49,7 @@ describe('QR payload generation', () => {
     expect(Object.keys(JSON.parse(serialised) as object).sort()).toEqual([
       'academicYear',
       'deviceId',
+      'issuedAt',
       'name',
       'studentId',
       'type',
@@ -235,5 +245,73 @@ describe('QR payload validation', () => {
       expect(result.message).not.toMatch(/Error|at |\.ts:|undefined|null/i);
       expect(result.message.length).toBeLessThan(120);
     }
+  });
+});
+
+describe('QR freshness', () => {
+  const issuedNow = () => serialiseAttendanceQr(buildAttendanceQr({ ...VALID, issuedAt: NOW }));
+
+  it('accepts a code issued just now', () => {
+    expect(validateScannedQr(issuedNow(), NOW).ok).toBe(true);
+  });
+
+  it('carries the payload back so the scanner can record it', () => {
+    const result = validateScannedQr(issuedNow(), NOW);
+
+    expect(result.ok && result.payload.studentId).toBe('001234');
+  });
+
+  it('still accepts a code just inside the age limit', () => {
+    expect(validateScannedQr(issuedNow(), NOW + QR_MAX_AGE_MS - 1000).ok).toBe(true);
+  });
+
+  it('refuses a code at the age limit', () => {
+    expect(validateScannedQr(issuedNow(), NOW + QR_MAX_AGE_MS).ok).toBe(false);
+  });
+
+it('tolerates ordinary clock drift between two phones', () => {
+    expect(validateScannedQr(issuedNow(), NOW - 1000).ok).toBe(true);
+  });
+
+  it('refuses a code whose timestamp is too far in the future', () => {
+    expect(validateScannedQr(issuedNow(), NOW - QR_CLOCK_SKEW_THRESHOLD_MS - 1000).ok).toBe(false);
+  });
+
+  it('refuses a legacy payload that carries no timestamp', () => {
+    const text = JSON.stringify({
+      version: VALID.version,
+      type: VALID.type,
+      name: VALID.name,
+      studentId: VALID.studentId,
+      academicYear: VALID.academicYear,
+      deviceId: VALID.deviceId,
+    });
+
+    expect(validateScannedQr(text, NOW).ok).toBe(false);
+  });
+
+  it('refuses an empty string', () => {
+    expect(validateScannedQr('', NOW).ok).toBe(false);
+  });
+});
+
+describe('a rotating code window', () => {
+  it('lets a code outlive one refresh, so no gap opens between codes', () => {
+    expect(QR_MAX_AGE_MS).toBeGreaterThan(QR_ROTATION_MS);
+  });
+
+  it('yields a different payload on each rotation', () => {
+    const first = buildAttendanceQr({ ...VALID, issuedAt: NOW });
+    const second = buildAttendanceQr({ ...VALID, issuedAt: NOW + QR_ROTATION_MS });
+
+    expect(serialiseAttendanceQr(first)).not.toBe(serialiseAttendanceQr(second));
+  });
+
+  it('keeps the same student identity across a rotation', () => {
+    const first = buildAttendanceQr({ ...VALID, issuedAt: NOW });
+    const second = buildAttendanceQr({ ...VALID, issuedAt: NOW + QR_ROTATION_MS });
+
+    expect(second.studentId).toBe(first.studentId);
+    expect(second.deviceId).toBe(first.deviceId);
   });
 });

@@ -21,6 +21,12 @@ export interface AttendanceRecord {
    * Device ID with another record in the same session.
    */
   duplicateDeviceFlag: boolean;
+  /**
+   * Free-text remark written by the teaching assistant (a mark, a warning, a
+   * late arrival). Kept short, stripped of control characters, and exported as
+   * its own worksheet column.
+   */
+  note: string;
 }
 
 export interface AttendanceSession {
@@ -57,7 +63,9 @@ export type ScanEvaluation =
       readonly conflicts: readonly AttendanceRecord[];
     };
 
-export type RecordPatch = Partial<Pick<AttendanceRecord, 'fullName' | 'studentId' | 'academicYear'>>;
+export type RecordPatch = Partial<
+  Pick<AttendanceRecord, 'fullName' | 'studentId' | 'academicYear' | 'note'>
+>;
 
 export type EditResult =
   | { readonly ok: true; readonly record: AttendanceRecord }

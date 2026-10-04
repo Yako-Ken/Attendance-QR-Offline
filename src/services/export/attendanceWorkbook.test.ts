@@ -2,8 +2,8 @@
  * Workbook export.
  *
  * These assertions are the privacy contract: the worksheet must contain exactly
- * five columns, and neither the Device ID nor the duplicate status may appear
- * anywhere in the archive — including in hidden sheets or styles.
+ * the six approved columns, and neither the Device ID nor the duplicate status
+ * may appear anywhere in the archive — including in hidden sheets or styles.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -36,6 +36,7 @@ function session(overrides: Partial<AttendanceSession> = {}): AttendanceSession 
         deviceId: 'aaaaaaaa-1111-4111-8111-111111111111',
         scannedAt: '2026-10-01T09:05:00.000Z',
         duplicateDeviceFlag: false,
+        note: '',
       },
       {
         id: 'r2',
@@ -45,6 +46,7 @@ function session(overrides: Partial<AttendanceSession> = {}): AttendanceSession 
         deviceId: 'aaaaaaaa-1111-4111-8111-111111111111',
         scannedAt: '2026-10-01T09:10:00.000Z',
         duplicateDeviceFlag: true,
+        note: 'Scored 18/20 in the quiz',
       },
       {
         id: 'r3',
@@ -54,6 +56,7 @@ function session(overrides: Partial<AttendanceSession> = {}): AttendanceSession 
         deviceId: 'bbbbbbbb-2222-4222-8222-222222222222',
         scannedAt: '2026-10-01T09:15:00.000Z',
         duplicateDeviceFlag: false,
+        note: '',
       },
     ],
     ...overrides,
@@ -108,17 +111,18 @@ describe('zip writer', () => {
 });
 
 describe('worksheet structure', () => {
-  it('declares exactly the five approved columns, in order', () => {
+  it('declares exactly the six approved columns, in order', () => {
     expect([...EXPORT_COLUMNS]).toEqual([
       'No.',
       'Full Name',
       'Student ID',
       'Academic Year',
       'Recorded At',
+      'Note',
     ]);
   });
 
-  it('writes those five headers in row 1', () => {
+  it('writes those six headers in row 1', () => {
     const xml = sheetXmlOf();
 
     for (const column of EXPORT_COLUMNS) {
@@ -126,13 +130,13 @@ describe('worksheet structure', () => {
     }
   });
 
-  it('emits no header beyond column E', () => {
+  it('emits no header beyond column F', () => {
     const xml = sheetXmlOf();
     const headerRow = xml.slice(xml.indexOf('<row r="1">'), xml.indexOf('</row>'));
     const references = headerRow.match(/r="([A-Z]+)1"/g) ?? [];
 
-    expect(references).toHaveLength(5);
-    expect(references.at(-1)).toBe('r="E1"');
+    expect(references).toHaveLength(6);
+    expect(references.at(-1)).toBe('r="F1"');
   });
 
   it('creates one worksheet only, with no hidden sheets', () => {
@@ -143,7 +147,7 @@ describe('worksheet structure', () => {
   });
 
   it('declares the correct dimension', () => {
-    expect(sheetXmlOf()).toContain('<dimension ref="A1:E4" />'.replace(' />', '/>'));
+    expect(sheetXmlOf()).toContain('<dimension ref="A1:F4" />'.replace(' />', '/>'));
   });
 
   it('numbers rows from 1 in sequence', () => {
@@ -227,8 +231,8 @@ describe('privacy: Device ID and status never reach the file', () => {
   it('does not leak the field names even as hidden columns', () => {
     const xml = sheetXmlOf();
 
-    expect(xml).not.toMatch(/<col [^>]*max="6"/);
-    expect(xml).not.toMatch(/<c r="[FGH]\d+"/);
+    expect(xml).not.toMatch(/<col [^>]*max="7"/);
+    expect(xml).not.toMatch(/<c r="[GHIJ]\d+"/);
   });
 
   it('keeps the Device ID available inside the app for duplicate detection', () => {
@@ -257,7 +261,7 @@ describe('content handling', () => {
   it('produces a valid worksheet for an empty session', () => {
     const xml = buildSheetXml({ sheetName: 'CS-3-A', rows: [] });
 
-    expect(xml).toContain('<dimension ref="A1:E1"/>');
+    expect(xml).toContain('<dimension ref="A1:F1"/>');
     expect(xml).not.toContain('<row r="2">');
   });
 

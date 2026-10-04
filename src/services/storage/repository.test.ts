@@ -55,6 +55,7 @@ function session(overrides: Partial<AttendanceSession> = {}): AttendanceSession 
         deviceId: DEVICE,
         scannedAt: '2026-10-01T09:02:00.000Z',
         duplicateDeviceFlag: false,
+        note: '',
       },
       {
         id: 'r2',
@@ -64,6 +65,7 @@ function session(overrides: Partial<AttendanceSession> = {}): AttendanceSession 
         deviceId: DEVICE,
         scannedAt: '2026-10-01T09:05:00.000Z',
         duplicateDeviceFlag: true,
+        note: 'Late',
       },
     ],
     ...overrides,
@@ -201,9 +203,14 @@ describe('settings persistence', () => {
   });
 
   it('round-trips settings', async () => {
-    await saveSettings({ theme: 'dark', haptics: false, keepAwake: true });
+    await saveSettings({ theme: 'dark', haptics: false, keepAwake: true, notePromptOnScan: false });
 
-    await expect(loadSettings()).resolves.toEqual({ theme: 'dark', haptics: false, keepAwake: true });
+    await expect(loadSettings()).resolves.toEqual({
+      theme: 'dark',
+      haptics: false,
+      keepAwake: true,
+      notePromptOnScan: false,
+    });
   });
 
   it('falls back to defaults for an unrecognised theme', async () => {

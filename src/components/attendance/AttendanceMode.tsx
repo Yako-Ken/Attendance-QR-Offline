@@ -14,8 +14,9 @@ import { useAttendanceSession } from '../../state/useAttendanceSession'
 import { useScanner } from '../../state/useScanner'
 import { ScannerView } from '../scanner/ScannerView'
 import { DeviceConflictDialog } from './DeviceConflictDialog'
+import { NoteDialog } from './NoteDialog'
 import { EditRecordDialog } from './EditRecordDialog'
-import { RecordLedger, RecordTable } from './RecordList'
+import { RecordCards, RecordLedger, RecordTable } from './RecordList'
 import { ExportPanel } from '../export/ExportPanel'
 import { Dialog, EmptyState, Field, Metric, Notice } from '../ui/primitives'
 import { Icon } from '../ui/Icon'
@@ -44,6 +45,7 @@ export function AttendanceMode({
 }: AttendanceModeProps) {
   const controller = useAttendanceSession();
   const { session } = controller;
+  const notePromptOnScan = settings.notePromptOnScan;
 
   const [stage, setStage] = useState<AttendanceStage>(() =>
     session === null ? 'setup' : initialStage,
@@ -55,6 +57,8 @@ export function AttendanceMode({
   const [editing, setEditing] = useState<AttendanceRecord | null>(null);
   const [removing, setRemoving] = useState<AttendanceRecord | null>(null);
   const [discarding, setDiscarding] = useState(false);
+  const [noteTarget, setNoteTarget] = useState<AttendanceRecord | null>(null);
+  const [notePrompted, setNotePrompted] = useState(false);
 
   const isWide = useMediaQuery('(min-width: 68rem)');
   const scannerActive = stage === 'live';
@@ -75,6 +79,17 @@ export function AttendanceMode({
     [haptics, onNotify],
   );
 
+  /**
+   * Queue the note dialog.
+   *
+   * `prompted` marks the post-scan entry point, which offers "Skip" rather than
+   * "Cancel" because by that point the student is already recorded.
+   */
+  const openNote = useCallback((record: AttendanceRecord, prompted = false) => {
+    setNoteTarget(record);
+    setNotePrompted(prompted);
+  }, []);
+
   const handleOutcome = useCallback(
     (outcome: { kind: 'accepted'; payload: AttendanceQrPayload } | { kind: 'rejected'; message: string }) => {
       if (outcome.kind === 'rejected') {
@@ -92,6 +107,7 @@ export function AttendanceMode({
             tone: 'ok',
           });
           notify('ok', 'Recorded', `${feedback.record.fullName} — year ${feedback.record.academicYear}`);
+          if (notePromptOnScan) openNote(feedback.record, true);
           break;
         case 'duplicate':
           setLastScan({
@@ -108,10 +124,20 @@ export function AttendanceMode({
           break;
       }
     },
-    [controller, notify],
+    [controller, notePromptOnScan, notify, openNote],
   );
 
   const scanner = useScanner(scannerActive, settings.keepAwake, handleOutcome);
+
+  /**
+   * Decoding is suspended whenever a dialog is on screen, so a student cannot be
+   * recorded behind an open decision. The camera preview stays live, which keeps
+   * the assistant's context intact.
+   */
+  const blocked = noteTarget !== null || controller.pendingConflict !== null;
+  useEffect(() => {
+    scanner.setPaused(blocked);
+  }, [blocked, scanner]);
 
   const stats = controller.stats;
   const metrics = useMemo(
@@ -262,6 +288,7 @@ export function AttendanceMode({
                     sharedDevices={controller.sharedDevices}
                     onEdit={setEditing}
                     onRemove={setRemoving}
+                    onNote={(record) => openNote(record, false)}
                   />
                 )}
               </div>
@@ -274,6 +301,7 @@ export function AttendanceMode({
           onBack={backToLive}
           onEdit={setEditing}
           onRemove={setRemoving}
+          onNote={(record) => openNote(record, false)}
           onNotify={notify}
           wide={isWide}
         />
@@ -311,6 +339,16 @@ export function AttendanceMode({
         record={editing}
         onSubmit={controller.updateRecord}
         onClose={() => setEditing(null)}
+      />
+
+      <NoteDialog
+        record={noteTarget}
+        prompted={notePrompted}
+        onSave={(recordId, note) => {
+          controller.setNote(recordId, note);
+          setNoteTarget(null);
+        }}
+        onClose={() => setNoteTarget(null)}
       />
 
       <Dialog
@@ -537,6 +575,7 @@ interface ReviewPanelProps {
   onBack: () => void;
   onEdit: (record: AttendanceRecord) => void;
   onRemove: (record: AttendanceRecord) => void;
+  onNote: (record: AttendanceRecord) => void;
   onNotify: (tone: ToastTone, title: string, text?: string) => void;
   wide: boolean;
 }
@@ -546,6 +585,7 @@ function ReviewPanel({
   onBack,
   onEdit,
   onRemove,
+  onNote,
   onNotify,
   wide,
 }: ReviewPanelProps) {
@@ -572,45 +612,16 @@ function ReviewPanel({
                 sharedDevices={controller.sharedDevices}
                 onEdit={onEdit}
                 onRemove={onRemove}
+                onNote={onNote}
               />
             ) : (
-              <div className="aq-records">
-                {session.records.map((record, index) => (
-                  <div className="aq-record" key={record.id}>
-                    <span className="aq-ledger__num">{index + 1}</span>
-                    <div className="aq-record__body">
-                      <span className="aq-record__name">{record.fullName}</span>
-                      <span className="aq-record__meta">
-                        <span className="aq-mono">{record.studentId}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>Year {record.academicYear}</span>
-                        <span aria-hidden="true">·</span>
-                        <span className="aq-num">{formatClock(record.scannedAt)}</span>
-                      </span>
-                    </div>
-                    <div className="aq-record__actions">
-                      <button
-                        type="button"
-                        className="aq-iconbtn"
-                        style={{ width: '2.25rem', height: '2.25rem' }}
-                        onClick={() => onEdit(record)}
-                        aria-label={`Edit ${record.fullName}`}
-                      >
-                        <Icon name="edit" size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className="aq-iconbtn aq-iconbtn--danger"
-                        style={{ width: '2.25rem', height: '2.25rem' }}
-                        onClick={() => onRemove(record)}
-                        aria-label={`Remove ${record.fullName}`}
-                      >
-                        <Icon name="trash" size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <RecordCards
+                records={session.records}
+                sharedDevices={controller.sharedDevices}
+                onEdit={onEdit}
+                onRemove={onRemove}
+                onNote={onNote}
+              />
             )}
           </div>
           <div className="aq-card__foot">

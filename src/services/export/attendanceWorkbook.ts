@@ -20,6 +20,7 @@ export const EXPORT_COLUMNS = [
   'Student ID',
   'Academic Year',
   'Recorded At',
+  'Note',
 ] as const;
 
 export type ExportColumn = (typeof EXPORT_COLUMNS)[number];
@@ -95,6 +96,7 @@ export interface WorkbookRow {
   readonly studentId: string;
   readonly academicYear: string;
   readonly recordedAt: string;
+  readonly note: string;
 }
 
 export interface BuildWorkbookInput {
@@ -160,6 +162,7 @@ export function buildSheetXml(input: BuildWorkbookInput): string {
       textCell(rowIndex, 2, row.studentId),
       textCell(rowIndex, 3, row.academicYear),
       textCell(rowIndex, 4, row.recordedAt),
+      textCell(rowIndex, 5, row.note),
     ];
     const body: Row = { cells };
     return renderRow(body, rowIndex, false).replace(
@@ -172,7 +175,7 @@ export function buildSheetXml(input: BuildWorkbookInput): string {
   const lastRow = input.rows.length + 1;
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${lastColumn}${Math.max(1, lastRow)}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="6" customWidth="1"/><col min="2" max="2" width="34" customWidth="1"/><col min="3" max="3" width="16" customWidth="1"/><col min="4" max="4" width="15" customWidth="1"/><col min="5" max="5" width="22" customWidth="1"/></cols><sheetData>${renderRow(header, 1, true)}${bodyRows.join('')}</sheetData><autoFilter ref="A1:${lastColumn}${Math.max(1, lastRow)}"/></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${lastColumn}${Math.max(1, lastRow)}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="6" customWidth="1"/><col min="2" max="2" width="34" customWidth="1"/><col min="3" max="3" width="16" customWidth="1"/><col min="4" max="4" width="15" customWidth="1"/><col min="5" max="5" width="22" customWidth="1"/><col min="6" max="6" width="30" customWidth="1"/></cols><sheetData>${renderRow(header, 1, true)}${bodyRows.join('')}</sheetData><autoFilter ref="A1:${lastColumn}${Math.max(1, lastRow)}"/></worksheet>`;
 }
 
 export function buildWorkbookXml(sectionName: string): string {
@@ -201,6 +204,7 @@ export function buildAttendanceWorkbook(
     studentId: record.studentId,
     academicYear: record.academicYear,
     recordedAt: recordedAtFormatter(record.scannedAt),
+    note: record.note ?? '',
   }));
 
   const encoder = new TextEncoder();

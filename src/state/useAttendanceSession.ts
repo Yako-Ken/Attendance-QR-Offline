@@ -22,6 +22,7 @@ import {
   createSession,
   editRecordInSession,
   evaluateScan,
+  setRecordNote,
   sharedDeviceIds,
 } from '../lib/attendance/engine'
 import { normalizeSectionName } from '../lib/validation/student'
@@ -56,6 +57,7 @@ export interface SessionController {
   readonly dismissPendingConflict: () => void;
   readonly updateRecord: (recordId: string, patch: { fullName?: string; studentId?: string; academicYear?: string }) => EditResult;
   readonly removeRecord: (recordId: string) => void;
+  readonly setNote: (recordId: string, note: string) => void;
   readonly discardSession: () => void;
   readonly clearFeedback: () => void;
 }
@@ -179,6 +181,16 @@ export function useAttendanceSession(onFeedback?: (feedback: ScanFeedback) => vo
     [commit],
   );
 
+  const setNote = useCallback(
+    (recordId: string, note: string) => {
+      const current = sessionRef.current;
+      if (current === null) return;
+      const next = setRecordNote(current, recordId, note);
+      if (next !== null) commit(next);
+    },
+    [commit],
+  );
+
   const discardSession = useCallback(() => {
     const current = sessionRef.current;
     if (current !== null) void deleteSession(current.id);
@@ -208,6 +220,7 @@ export function useAttendanceSession(onFeedback?: (feedback: ScanFeedback) => vo
     dismissPendingConflict,
     updateRecord,
     removeRecord,
+    setNote,
     discardSession,
     clearFeedback,
   };

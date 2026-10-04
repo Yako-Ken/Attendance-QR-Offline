@@ -14,6 +14,7 @@ export interface RecordListProps {
   readonly dense?: boolean;
   readonly onEdit: (record: AttendanceRecord) => void;
   readonly onRemove: (record: AttendanceRecord) => void;
+  readonly onNote: (record: AttendanceRecord) => void;
 }
 
 function flagged(record: AttendanceRecord, shared: ReadonlySet<string>): boolean {
@@ -29,6 +30,58 @@ export function DeviceWarningChip() {
   );
 }
 
+export function NoteChip({ note }: { note: string }) {
+  if (note === '') return null;
+  return (
+    <span className="aq-note-chip" title={note}>
+      <Icon name="note" size={12} />
+      <span className="aq-visually-nowrap">{note}</span>
+    </span>
+  );
+}
+
+interface ActionsProps {
+  readonly record: AttendanceRecord;
+  readonly onEdit: (record: AttendanceRecord) => void;
+  readonly onRemove: (record: AttendanceRecord) => void;
+  readonly onNote: (record: AttendanceRecord) => void;
+}
+
+function ActionButtons({ record, onEdit, onRemove, onNote }: ActionsProps) {
+  return (
+    <div className="aq-ledger__actions">
+      <button
+        type="button"
+        className="aq-iconbtn"
+        style={{ width: '2.25rem', height: '2.25rem' }}
+        onClick={() => onNote(record)}
+        aria-label={`Add a note for ${record.fullName}`}
+        title={record.note === '' ? 'Add a note' : record.note}
+      >
+        <Icon name="note" size={15} />
+      </button>
+      <button
+        type="button"
+        className="aq-iconbtn"
+        style={{ width: '2.25rem', height: '2.25rem' }}
+        onClick={() => onEdit(record)}
+        aria-label={`Edit ${record.fullName}`}
+      >
+        <Icon name="edit" size={15} />
+      </button>
+      <button
+        type="button"
+        className="aq-iconbtn aq-iconbtn--danger"
+        style={{ width: '2.25rem', height: '2.25rem' }}
+        onClick={() => onRemove(record)}
+        aria-label={`Remove ${record.fullName} from this session`}
+      >
+        <Icon name="trash" size={15} />
+      </button>
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* Mobile ledger rail                                                         */
 /* -------------------------------------------------------------------------- */
@@ -39,6 +92,7 @@ export function RecordLedger({
   dense = false,
   onEdit,
   onRemove,
+  onNote,
 }: RecordListProps) {
   const visible = dense ? records.slice(0, 12) : records;
   return (
@@ -56,27 +110,44 @@ export function RecordLedger({
               <span className="aq-num">{formatClock(record.scannedAt)}</span>
               {flagged(record, sharedDevices) ? <DeviceWarningChip /> : null}
             </span>
+            <NoteChip note={record.note} />
           </div>
-          <div className="aq-ledger__actions">
-            <button
-              type="button"
-              className="aq-iconbtn"
-              style={{ width: '2.25rem', height: '2.25rem' }}
-              onClick={() => onEdit(record)}
-              aria-label={`Edit ${record.fullName}`}
-            >
-              <Icon name="edit" size={15} />
-            </button>
-            <button
-              type="button"
-              className="aq-iconbtn aq-iconbtn--danger"
-              style={{ width: '2.25rem', height: '2.25rem' }}
-              onClick={() => onRemove(record)}
-              aria-label={`Remove ${record.fullName} from this session`}
-            >
-              <Icon name="trash" size={15} />
-            </button>
+          <ActionButtons record={record} onEdit={onEdit} onRemove={onRemove} onNote={onNote} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mobile record cards                                                        */
+/* -------------------------------------------------------------------------- */
+
+export function RecordCards({
+  records,
+  sharedDevices,
+  onEdit,
+  onRemove,
+  onNote,
+}: RecordListProps) {
+  return (
+    <div className="aq-records">
+      {records.map((record, index) => (
+        <div className="aq-record" key={record.id}>
+          <span className="aq-ledger__num">{index + 1}</span>
+          <div className="aq-record__body">
+            <span className="aq-record__name">{record.fullName}</span>
+            <span className="aq-record__meta">
+              <span className="aq-mono">{record.studentId}</span>
+              <span aria-hidden="true">·</span>
+              <span>Year {record.academicYear}</span>
+              <span aria-hidden="true">·</span>
+              <span className="aq-num">{formatClock(record.scannedAt)}</span>
+              {flagged(record, sharedDevices) ? <DeviceWarningChip /> : null}
+            </span>
+            <NoteChip note={record.note} />
           </div>
+          <ActionButtons record={record} onEdit={onEdit} onRemove={onRemove} onNote={onNote} />
         </div>
       ))}
     </div>
@@ -87,18 +158,13 @@ export function RecordLedger({
 /* Desktop table                                                              */
 /* -------------------------------------------------------------------------- */
 
-export function RecordTable({
-  records,
-  sharedDevices,
-  onEdit,
-  onRemove,
-}: RecordListProps) {
+export function RecordTable({ records, sharedDevices, onEdit, onRemove, onNote }: RecordListProps) {
   return (
     <div className="aq-table-wrap">
       <table className="aq-table">
         <caption className="aq-sr">
           Attendance records for this session. Columns: number, full name, student ID, academic
-          year, and the time the scan was recorded.
+          year, the time the scan was recorded, and any note.
         </caption>
         <thead>
           <tr>
@@ -109,6 +175,7 @@ export function RecordTable({
             <th scope="col">Student ID</th>
             <th scope="col">Academic Year</th>
             <th scope="col">Recorded At</th>
+            <th scope="col">Note</th>
             <th scope="col" className="aq-table__actions">
               Actions
             </th>
@@ -127,27 +194,9 @@ export function RecordTable({
               <td className="aq-table__id">{record.studentId}</td>
               <td className="aq-num">{record.academicYear}</td>
               <td className="aq-num">{formatDateTime(record.scannedAt)}</td>
+              <td className="aq-table__note">{record.note === '' ? '—' : record.note}</td>
               <td className="aq-table__actions">
-                <span className="aq-row" style={{ justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    className="aq-iconbtn"
-                    style={{ width: '2.25rem', height: '2.25rem' }}
-                    onClick={() => onEdit(record)}
-                    aria-label={`Edit ${record.fullName}`}
-                  >
-                    <Icon name="edit" size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="aq-iconbtn aq-iconbtn--danger"
-                    style={{ width: '2.25rem', height: '2.25rem' }}
-                    onClick={() => onRemove(record)}
-                    aria-label={`Remove ${record.fullName} from this session`}
-                  >
-                    <Icon name="trash" size={15} />
-                  </button>
-                </span>
+                <ActionButtons record={record} onEdit={onEdit} onRemove={onRemove} onNote={onNote} />
               </td>
             </tr>
           ))}
